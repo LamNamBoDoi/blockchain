@@ -1,0 +1,10 @@
+{
+  "network-configs": {
+    "network-1": {
+      "mspid": "Org1MSP",
+      "network": "test-network-org1",
+      "profile": "./connection-profile.json"
+    }
+  },
+  "license": "Apache-2.0"
+}

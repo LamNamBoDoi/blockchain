@@ -1,0 +1,78 @@
+# Cấu hình tạo crypto materials cho Hyperledger Fabric
+# Sử dụng cryptogen để tạo certificates cho organizations
+
+# ============================================
+# ORDERER ORGANIZATIONS
+# ============================================
+OrdererOrgs:
+  # Orderer Organization
+  - Name: Orderer
+    Domain: example.com
+    
+    # Số lượng orderer nodes
+    Specs:
+      - Hostname: orderer
+      # - Hostname: orderer2  # Uncomment nếu cần thêm orderer
+
+# ============================================
+# PEER ORGANIZATIONS
+# ============================================
+PeerOrgs:
+  # Organization 1
+  - Name: Org1
+    Domain: org1.example.com
+    EnableNodeOUs: true  # Bật Node OUs để phân biệt peer, client, admin
+    
+    # Template tạo peers tự động
+    Template:
+      Count: 2  # Tạo peer0.org1.example.com và peer1.org1.example.com
+      # Start: 0
+      # Hostname: peer{{.Index}}  # Tùy chỉnh tên nếu cần
+    
+    # Số lượng users (không bao gồm Admin)
+    Users:
+      Count: 1  # Tạo User1@org1.example.com
+
+  # Organization 2
+  - Name: Org2
+    Domain: org2.example.com
+    EnableNodeOUs: true
+    
+    Template:
+      Count: 2  # Tạo peer0.org2.example.com và peer1.org2.example.com
+    
+    Users:
+      Count: 1  # Tạo User1@org2.example.com
+
+# ============================================
+# KẾT QUẢ SAU KHI CHẠY CRYPTOGEN
+# ============================================
+# organizations/
+# ├── ordererOrganizations/
+# │   └── example.com/
+# │       ├── ca/                    # CA certificates
+# │       ├── msp/                   # MSP của orderer org
+# │       ├── orderers/
+# │       │   └── orderer.example.com/
+# │       │       ├── msp/           # MSP của orderer node
+# │       │       └── tls/           # TLS certificates
+# │       └── users/
+# │           └── Admin@example.com/
+# │
+# └── peerOrganizations/
+#     ├── org1.example.com/
+#     │   ├── ca/
+#     │   ├── msp/
+#     │   ├── peers/
+#     │   │   ├── peer0.org1.example.com/
+#     │   │   │   ├── msp/
+#     │   │   │   └── tls/
+#     │   │   └── peer1.org1.example.com/
+#     │   │       ├── msp/
+#     │   │       └── tls/
+#     │   └── users/
+#     │       ├── Admin@org1.example.com/
+#     │       └── User1@org1.example.com/
+#     │
+#     └── org2.example.com/
+#         └── (tương tự org1)
