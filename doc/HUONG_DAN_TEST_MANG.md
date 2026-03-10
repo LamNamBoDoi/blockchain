@@ -21,6 +21,9 @@ docker cp organizations/peerOrganizations/org2.example.com/users/Admin@org2.exam
 
 # 4. Copy file Orderer TLS cho Org2 (để test từ máy Org2)
 docker cp organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem peer0.org2.example.com:/tmp/orderer.crt
+
+# 5. QUAN TRỌNG: Copy file Orderer TLS cho Org1 (để test từ máy Org1 - vì gọi invoke cần chứng thực TLS lên orderer)
+docker cp organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem peer0.org1.example.com:/tmp/orderer.crt
 ```
 
 ---
@@ -46,7 +49,7 @@ peer chaincode invoke \
   --tls --cafile /tmp/orderer.crt \
   -C certificatechannel -n certificate \
   --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/tls/ca.crt \
-  -c '{"function":"CreateCertificate","Args":["CERT001","SV101","Nguyen Van A","CNTT","Gioi","2024","Dai Hoc ABC"]}'
+  -c '{"function":"CreateCertificate","Args":["CERT-2026-001", "HUST", "Dai hoc Bach Khoa Hanoi", "Cu nhan", "Khoa hoc may tinh", "SV20220001", "Nguyen Van A", "Gioi", "2026", "2026-06-15", "Hieu truong Tran Van B", "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"]}'
 ```
 > **Kết quả:** `status:200` (Thành công) ✅
 
@@ -64,7 +67,7 @@ export CORE_PEER_LOCALMSPID="Org1MSP"
 export CORE_PEER_MSPCONFIGPATH=/tmp/user1_org1_msp
 
 # Thực hiện query
-peer chaincode query -C certificatechannel -n certificate -c '{"Args":["GetCertificatesByStudent","SV101"]}'
+peer chaincode query -C certificatechannel -n certificate -c '{"Args":["GetCertificatesByStudent","SV20220001"]}'
 ```
 > **Kết quả:** Trả về JSON thông tin bằng ✅
 
@@ -89,7 +92,7 @@ peer chaincode invoke \
   --tls --cafile /tmp/orderer.crt \
   -C certificatechannel -n certificate \
   --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/tls/ca.crt \
-  -c '{"function":"CreateCertificate","Args":["FAKE_CERT","FAKE_SV","Hacker","IT","Gioi","2024","Fake Uni"]}'
+  -c '{"function":"CreateCertificate","Args":["FAKE-CERT-001", "HUST", "Dai hoc Bach Khoa Hanoi", "Cu nhan", "IT", "HACKER01", "Hacker", "Gioi", "2026", "2026-06-15", "Hieu truong fake", "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"]}'
 ```
 > **Kết quả:** Lỗi `Failed evaluating policy... this policy requires 1 of the 'Writers' sub-policies to be satisfied`  
 > **Ý nghĩa:** Org2 bị chặn bởi Channel Policy (Lớp bảo mật cấp 1) ❌ → **Hệ thống bảo mật tốt!** ✅
@@ -110,9 +113,9 @@ docker exec -it peer0.org2.example.com sh
 export CORE_PEER_TLS_ENABLED=true
 
 # Query bằng vừa tạo từ Org1
-peer chaincode query -C certificatechannel -n certificate -c '{"Args":["GetCertificate","CERT001"]}'
+peer chaincode query -C certificatechannel -n certificate -c '{"Args":["GetCertificate","CERT-2026-001"]}'
 ```
-> **Kết quả:** Hiển thị đầy đủ JSON thông tin bằng CERT001 ✅  
+> **Kết quả:** Hiển thị đầy đủ JSON thông tin bằng CERT-2026-001 ✅  
 > **Ý nghĩa:** Dữ liệu đã được đồng bộ hoàn toàn từ Org1 sang Org2!
 
 ---
@@ -135,10 +138,10 @@ peer chaincode invoke \
   --tls --cafile /tmp/orderer.crt \
   -C certificatechannel -n certificate \
   --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /etc/hyperledger/fabric/tls/ca.crt \
-  -c '{"function":"RevokeCertificate","Args":["CERT001"]}'
+  -c '{"function":"RevokeCertificate","Args":["CERT-2026-001", "Phat hien lam gia"]}'
 
 # 2. Kiểm tra lại trạng thái
-peer chaincode query -C certificatechannel -n certificate -c '{"Args":["VerifyCertificate","CERT001"]}'
+peer chaincode query -C certificatechannel -n certificate -c '{"Args":["VerifyCertificate","CERT-2026-001"]}'
 ```
 > **Kết quả:** Verify trả về `false` (Đã bị thu hồi) ✅
 
