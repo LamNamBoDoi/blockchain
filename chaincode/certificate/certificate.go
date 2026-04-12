@@ -16,8 +16,10 @@ import (
 //	Org1MSP = Khối Trường Đại Học
 //	          → Backend Service dùng identity này để cấp bằng thay mặt cho từng trường
 //	          → Phân quyền chi tiết (trường nào cấp bằng của trường đó) được kiểm soát ở tầng Backend/JWT
+//	          → Có quyền thu hồi bằng do mình cấp
 //	Org2MSP = Bộ Giáo Dục & Đào Tạo
-//	          → Cơ quan giám sát độc lập, có quyền thu hồi văn bằng khi phát hiện sai phạm
+//	          → Cơ quan giám sát độc lập
+//	          → Có quyền thu hồi bất kỳ văn bằng nào khi phát hiện sai phạm
 //	          → Không tham gia vào quá trình cấp bằng
 type CertificateContract struct {
 	contractapi.Contract
@@ -332,7 +334,7 @@ func (c *CertificateContract) UpdatePdfHash(
 }
 
 // RevokeCertificate - Thu hồi văn bằng kèm lý do
-// Org1MSP (Bộ GD) hoặc Org2MSP (Cục Quản lý) đều được phép thu hồi
+// Org1MSP (Trường ĐH) hoặc Org2MSP (Bộ GD&ĐT) đều được phép thu hồi
 func (c *CertificateContract) RevokeCertificate(
 	ctx contractapi.TransactionContextInterface,
 	certID string,
