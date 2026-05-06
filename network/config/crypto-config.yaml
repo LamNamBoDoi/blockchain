@@ -24,25 +24,26 @@ PeerOrgs:
     EnableNodeOUs: true  # Bật Node OUs để phân biệt peer, client, admin
     
     # Template tạo peers tự động
+    # Chỉ tạo 1 peer (peer0) vì docker-compose chỉ chạy peer0 mỗi org
     Template:
-      Count: 2  # Tạo peer0.org1.example.com và peer1.org1.example.com
+      Count: 1  # peer0.org1.example.com
       # Start: 0
       # Hostname: peer{{.Index}}  # Tùy chỉnh tên nếu cần
-    
+
     # Số lượng users (không bao gồm Admin)
     Users:
-      Count: 1  # Tạo User1@org1.example.com
+      Count: 1  # User1@org1.example.com
 
   # Organization 2
   - Name: Org2
     Domain: org2.example.com
     EnableNodeOUs: true
-    
+
     Template:
-      Count: 2  # Tạo peer0.org2.example.com và peer1.org2.example.com
-    
+      Count: 1  # peer0.org2.example.com
+
     Users:
-      Count: 1  # Tạo User1@org2.example.com
+      Count: 1  # User1@org2.example.com
 
 # ============================================
 # KẾT QUẢ SAU KHI CHẠY CRYPTOGEN
@@ -50,12 +51,12 @@ PeerOrgs:
 # organizations/
 # ├── ordererOrganizations/
 # │   └── example.com/
-# │       ├── ca/                    # CA certificates
-# │       ├── msp/                   # MSP của orderer org
+# │       ├── ca/
+# │       ├── msp/
 # │       ├── orderers/
 # │       │   └── orderer.example.com/
-# │       │       ├── msp/           # MSP của orderer node
-# │       │       └── tls/           # TLS certificates
+# │       │       ├── msp/
+# │       │       └── tls/
 # │       └── users/
 # │           └── Admin@example.com/
 # │
@@ -64,10 +65,7 @@ PeerOrgs:
 #     │   ├── ca/
 #     │   ├── msp/
 #     │   ├── peers/
-#     │   │   ├── peer0.org1.example.com/
-#     │   │   │   ├── msp/
-#     │   │   │   └── tls/
-#     │   │   └── peer1.org1.example.com/
+#     │   │   └── peer0.org1.example.com/
 #     │   │       ├── msp/
 #     │   │       └── tls/
 #     │   └── users/

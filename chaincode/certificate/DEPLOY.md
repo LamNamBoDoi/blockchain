@@ -173,7 +173,7 @@ peer chaincode invoke \
   --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
   --peerAddresses localhost:9051 \
   --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt \
-  -c '{"function":"CreateCertificate","Args":["CERT001","SV001","Nguyen Van A","Blockchain Development","A","2024-01-09","HCMUT"]}'
+  -c '{"function":"CreateCertificate","Args":["CERT001", "HUST", "Trường ĐH Viet Nam", "Cu nhan", "Khoa hoc may tinh", "SV001", "Nguyen Van A", "Gioi", "2024", "2024-01-09", "Hieu truong", "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"]}'
 ```
 
 ### Query Certificate
