@@ -19,70 +19,74 @@ import (
 //	Org2MSP = Bộ GD&ĐT / Super Admin
 //	          → Super Admin: giám sát toàn hệ thống, thu hồi bất kỳ bằng nào
 //	          → Backend dùng identity Org2 để revoke thay mặt Super Admin
+//
+// Audit trail (lưu vào Certificate struct):
+//
+//	CreatedBy / CreatedByMSP : ai đã tạo bằng trên blockchain
+//	RevokedBy / RevokedByMSP / RevokedAt : ai đã thu hồi bằng
 type CertificateContract struct {
 	contractapi.Contract
 }
 
 // Certificate - Cấu trúc dữ liệu văn bằng
 type Certificate struct {
-	CertID           string    `json:"certId"`           // Mã văn bằng (VD: CERT-BK-2025-001)
-	UniversityID     string    `json:"universityId"`     // Mã trường (VD: BACHKHOA, KHTN, UEH)
-	UniversityName   string    `json:"universityName"`   // Tên trường đầy đủ
-	DegreeType       string    `json:"degreeType"`       // Loại bằng: "Cử nhân", "Thạc sĩ", "Tiến sĩ"
-	Major            string    `json:"major"`            // Chuyên ngành
-	StudentID        string    `json:"studentId"`        // Mã sinh viên
-	StudentName      string    `json:"studentName"`      // Tên sinh viên
-	Grade            string    `json:"grade"`            // Xếp loại: "Xuất sắc", "Giỏi", "Khá", "Trung bình"
-	GraduationYear   string    `json:"graduationYear"`   // Năm tốt nghiệp
-	IssueDate        string    `json:"issueDate"`        // Ngày cấp (VD: "2025-06-15")
-	Issuer           string    `json:"issuer"`           // Người ký (VD: Hiệu trưởng)
-	// ── QUAN TRỌNG NHẤT: Hash của file PDF văn bằng gốc ──────────────────────
-	// Đây là trái tim của hệ thống xác minh.
-	// Khi ai đó nộp file PDF, hệ thống tính SHA-256 của file đó
-	// rồi so sánh với giá trị này. Nếu khớp → file gốc, không khớp → file giả/bị sửa.
-	// Format: "sha256:<hex_string>" (VD: "sha256:a3f9c2d1e8b4...")
-	PdfHash          string    `json:"pdfHash"`          // SHA-256 hash của file PDF gốc
-	Status           string    `json:"status"`           // Trạng thái: "valid" | "revoked"
-	RevokeReason     string    `json:"revokeReason"`     // Lý do thu hồi (nếu có)
-	UpdateCount      int       `json:"updateCount"`      // Số lần cập nhật PDF hash
-	LastUpdateReason string    `json:"lastUpdateReason"` // Lý do cập nhật gần nhất
-	CreatedAt        time.Time `json:"createdAt"`        // Thời gian tạo trên blockchain
-	UpdatedAt        time.Time `json:"updatedAt"`        // Thời gian cập nhật gần nhất
+	CertID           string `json:"certId"`          // Mã văn bằng (VD: CERT-BK-2025-001)
+	UniversityID     string `json:"universityId"`    // Mã trường (VD: BACHKHOA, KHTN, UEH)
+	UniversityName   string `json:"universityName"`  // Tên trường đầy đủ
+	DegreeType       string `json:"degreeType"`      // Loại bằng: "Cử nhân", "Thạc sĩ", "Tiến sĩ"
+	Major            string `json:"major"`           // Chuyên ngành
+	StudentID        string `json:"studentId"`       // Mã sinh viên
+	StudentName      string `json:"studentName"`     // Tên sinh viên
+	Grade            string `json:"grade"`           // Xếp loại: "Xuất sắc", "Giỏi", "Khá", "Trung bình"
+	GraduationYear   string `json:"graduationYear"`  // Năm tốt nghiệp
+	IssueDate        string `json:"issueDate"`       // Ngày cấp (VD: "2025-06-15")
+	Issuer           string `json:"issuer"`          // Người ký (VD: Hiệu trưởng)
+	PdfHash          string `json:"pdfHash"`         // SHA-256 hash của file PDF gốc
+	Status           string `json:"status"`          // Trạng thái: "valid" | "revoked"
+	CreatedBy        string `json:"createdBy"`       // Enrollment ID của người tạo
+	CreatedByMSP     string `json:"createdByMsp"`    // MSP ID của người tạo
+	RevokeReason     string `json:"revokeReason"`   // Lý do thu hồi
+	RevokedBy        string `json:"revokedBy"`      // Enrollment ID người thu hồi
+	RevokedByMSP     string `json:"revokedByMsp"`  // MSP ID người thu hồi
+	RevokedAt        string `json:"revokedAt"`      // Thời gian thu hồi (RFC3339)
+	UpdateCount      int    `json:"updateCount"`     // Số lần cập nhật PDF hash
+	LastUpdateReason string `json:"lastUpdateReason"` // Lý do cập nhật gần nhất
+	CreatedAt        string `json:"createdAt"`      // Thời gian tạo (RFC3339)
+	UpdatedAt        string `json:"updatedAt"`      // Thời gian cập nhật (RFC3339)
 }
 
 // UpdateRecord - Bản ghi lịch sử cập nhật PDF hash
 type UpdateRecord struct {
-	TxID       string    `json:"txId"`       // ID giao dịch blockchain
-	Timestamp  time.Time `json:"timestamp"`  // Thời gian cập nhật
-	OldPdfHash string    `json:"oldPdfHash"` // Hash cũ trước khi cập nhật
-	NewPdfHash string    `json:"newPdfHash"` // Hash mới sau khi cập nhật
-	Reason     string    `json:"reason"`     // Lý do cập nhật
-	UpdatedBy  string    `json:"updatedBy"`  // MSP ID của người thực hiện
+	TxID       string `json:"txId"`
+	Timestamp  string `json:"timestamp"`
+	OldPdfHash string `json:"oldPdfHash"`
+	NewPdfHash string `json:"newPdfHash"`
+	Reason     string `json:"reason"`
+	UpdatedBy  string `json:"updatedBy"`
 }
 
 // HistoryQueryResult - Kết quả truy vấn lịch sử giao dịch
 type HistoryQueryResult struct {
-	TxID      string      `json:"txId"`      // ID giao dịch blockchain
-	Timestamp time.Time   `json:"timestamp"` // Thời gian giao dịch
-	IsDelete  bool        `json:"isDelete"`  // Đã xóa hay chưa
-	Value     Certificate `json:"value"`     // Nội dung tại thời điểm đó
+	TxID      string      `json:"txId"`
+	Timestamp string      `json:"timestamp"`
+	IsDelete  bool        `json:"isDelete"`
+	Value     Certificate `json:"value"`
 }
 
 type VerifyResult struct {
-	IsValid      bool         `json:"isValid"`      // Văn bằng có hợp lệ không
-	PdfHashMatch bool         `json:"pdfHashMatch"` // Hash PDF có khớp không
-	Status       string       `json:"status"`       // "valid", "revoked", "not_found", "pdf_tampered"
-	Message      string       `json:"message"`      // Thông báo mô tả
-	Certificate  *Certificate `json:"certificate"`  // Thông tin văn bằng đầy đủ
+	IsValid      bool         `json:"isValid"`
+	PdfHashMatch bool         `json:"pdfHashMatch"`
+	Status       string       `json:"status"`
+	Message      string       `json:"message"`
+	Certificate  *Certificate `json:"certificate"`
 }
 
 // ============================================================
 // KHỞI TẠO
 // ============================================================
 
-// InitLedger - Khởi tạo sổ cái (có thể thêm dữ liệu mẫu nếu cần)
 func (c *CertificateContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
-	fmt.Println("✅ Chaincode Văn Bằng đã được khởi tạo thành công")
+	fmt.Println("Chaincode Van Bang da duoc khoi tao thanh cong")
 	return nil
 }
 
@@ -90,11 +94,6 @@ func (c *CertificateContract) InitLedger(ctx contractapi.TransactionContextInter
 // CRUD CƠ BẢN
 // ============================================================
 
-// CreateCertificate - Cấp văn bằng mới lên blockchain
-// Chỉ Org1MSP (Khối Trường Đại Học) mới được gọi hàm này
-// pdfHash: SHA-256 của file PDF văn bằng, tính ở backend trước khi gọi chaincode
-//
-//	Format: "sha256:<64_hex_chars>"  VD: "sha256:a3f9c2d1e8b4..."
 func (c *CertificateContract) CreateCertificate(
 	ctx contractapi.TransactionContextInterface,
 	certID string,
@@ -108,48 +107,43 @@ func (c *CertificateContract) CreateCertificate(
 	graduationYear string,
 	issueDate string,
 	issuer string,
-	pdfHash string, // ← SHA-256 hash của file PDF gốc - BẮT BUỘC
+	pdfHash string,
+	issuerID string,
 ) error {
-	// --- Kiểm tra quyền: Chỉ Org1MSP (Trường ĐH) được phép cấp bằng ---
 	clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
-		return fmt.Errorf("không thể lấy MSP ID người gọi: %v", err)
+		return fmt.Errorf("khong the lay MSP ID nguoi goi: %v", err)
 	}
 	if clientMSPID != "Org1MSP" {
-		return fmt.Errorf("không có quyền cấp văn bằng: chỉ Org1MSP (Trường ĐH) được phép, bạn là: %s", clientMSPID)
+		return fmt.Errorf("khong co quyen cap van bang: chi Org1MSP (Truong DH) duoc phep, ban la: %s", clientMSPID)
 	}
 
-	// --- Validate input bắt buộc ---
 	if strings.TrimSpace(certID) == "" || strings.TrimSpace(universityID) == "" ||
 		strings.TrimSpace(studentID) == "" || strings.TrimSpace(studentName) == "" {
-		return fmt.Errorf("certId, universityId, studentId, studentName không được để trống")
+		return fmt.Errorf("certId, universityId, studentId, studentName khong duoc de trong")
 	}
 
-	// --- Validate pdfHash ---
 	if strings.TrimSpace(pdfHash) == "" {
-		return fmt.Errorf("pdfHash không được để trống: cần tính SHA-256 của file PDF trước khi cấp bằng")
+		return fmt.Errorf("pdfHash khong duoc de trong")
 	}
-	if !strings.HasPrefix(pdfHash, "sha256:") || len(pdfHash) != 71 { // "sha256:" + 64 hex chars
-		return fmt.Errorf("pdfHash không đúng định dạng, cần 'sha256:<64_hex_chars>', nhận được: %s", pdfHash)
+	if !strings.HasPrefix(pdfHash, "sha256:") || len(pdfHash) != 71 {
+		return fmt.Errorf("pdfHash khong dung dinh dang, can 'sha256:<64_hex_chars>', nhan duoc: %s", pdfHash)
 	}
 
-	// --- Kiểm tra văn bằng đã tồn tại chưa ---
 	exists, err := c.CertificateExists(ctx, certID)
 	if err != nil {
 		return err
 	}
 	if exists {
-		return fmt.Errorf("văn bằng %s đã tồn tại trên blockchain", certID)
+		return fmt.Errorf("van bang %s da ton tai tren blockchain", certID)
 	}
 
-	// --- Lấy timestamp từ transaction (đảm bảo tính nhất quán giữa các peer) ---
 	txTimestamp, err := ctx.GetStub().GetTxTimestamp()
 	if err != nil {
-		return fmt.Errorf("không thể lấy timestamp giao dịch: %v", err)
+		return fmt.Errorf("khong the lay timestamp giao dich: %v", err)
 	}
-	timestamp := time.Unix(txTimestamp.Seconds, 0) // Bỏ nanoseconds để đảm bảo determinism
+	ts := time.Unix(txTimestamp.Seconds, int64(txTimestamp.Nanos)).UTC().Format(time.RFC3339)
 
-	// --- Tạo đối tượng văn bằng ---
 	certificate := Certificate{
 		CertID:           certID,
 		UniversityID:     universityID,
@@ -162,54 +156,56 @@ func (c *CertificateContract) CreateCertificate(
 		GraduationYear:   graduationYear,
 		IssueDate:        issueDate,
 		Issuer:           issuer,
-		PdfHash:          pdfHash, // ← Khóa chống làm giả: hash của PDF gốc
+		PdfHash:          pdfHash,
 		Status:           "valid",
+		CreatedBy:        issuerID,
+		CreatedByMSP:     clientMSPID,
 		RevokeReason:     "",
-		UpdateCount:      0,  // ← Số lần cập nhật ban đầu = 0
-		LastUpdateReason: "", // ← Chưa có lý do cập nhật nào
-		CreatedAt:        timestamp,
-		UpdatedAt:        timestamp,
+		RevokedBy:        "",
+		RevokedByMSP:     "",
+		RevokedAt:        "",
+		UpdateCount:       0,
+		LastUpdateReason: "",
+		CreatedAt:        ts,
+		UpdatedAt:        ts,
 	}
 
-	// --- Lưu vào ledger ---
 	certificateJSON, err := json.Marshal(certificate)
 	if err != nil {
-		return fmt.Errorf("không thể serialize dữ liệu: %v", err)
+		return fmt.Errorf("khong the serialize du lieu: %v", err)
 	}
 
 	return ctx.GetStub().PutState(certID, certificateJSON)
 }
 
-// GetCertificate - Lấy thông tin văn bằng theo ID
 func (c *CertificateContract) GetCertificate(
 	ctx contractapi.TransactionContextInterface,
 	certID string,
 ) (*Certificate, error) {
 	certificateJSON, err := ctx.GetStub().GetState(certID)
 	if err != nil {
-		return nil, fmt.Errorf("không thể đọc dữ liệu: %v", err)
+		return nil, fmt.Errorf("khong the doc du lieu: %v", err)
 	}
 	if certificateJSON == nil {
-		return nil, fmt.Errorf("văn bằng %s không tồn tại", certID)
+		return nil, fmt.Errorf("van bang %s khong ton tai", certID)
 	}
 
 	var certificate Certificate
 	err = json.Unmarshal(certificateJSON, &certificate)
 	if err != nil {
-		return nil, fmt.Errorf("không thể deserialize dữ liệu: %v", err)
+		return nil, fmt.Errorf("khong the deserialize du lieu: %v", err)
 	}
 
 	return &certificate, nil
 }
 
-// CertificateExists - Kiểm tra văn bằng có tồn tại không
 func (c *CertificateContract) CertificateExists(
 	ctx contractapi.TransactionContextInterface,
 	certID string,
 ) (bool, error) {
 	certificateJSON, err := ctx.GetStub().GetState(certID)
 	if err != nil {
-		return false, fmt.Errorf("lỗi khi đọc world state: %v", err)
+		return false, fmt.Errorf("loi khi doc world state: %v", err)
 	}
 	return certificateJSON != nil, nil
 }
@@ -218,8 +214,6 @@ func (c *CertificateContract) CertificateExists(
 // XÁC MINH & THU HỒI
 // ============================================================
 
-// VerifyCertificate - Xác minh văn bằng CHỈ bằng certID (không kiểm tra file)
-// Dùng khi tra cứu nhanh thông tin, chưa có file PDF
 func (c *CertificateContract) VerifyCertificate(
 	ctx contractapi.TransactionContextInterface,
 	certID string,
@@ -229,15 +223,22 @@ func (c *CertificateContract) VerifyCertificate(
 		return &VerifyResult{
 			IsValid: false,
 			Status:  "not_found",
-			Message: fmt.Sprintf("Không tìm thấy văn bằng với mã: %s", certID),
+			Message: fmt.Sprintf("Khong tim thay van bang voi ma: %s", certID),
 		}, nil
 	}
 
 	if certificate.Status == "revoked" {
+		revokeInfo := fmt.Sprintf("Van bang da bi thu hoi. Ly do: %s", certificate.RevokeReason)
+		if certificate.RevokedBy != "" {
+			revokeInfo += fmt.Sprintf(" | Nguoi thu hoi: %s (%s)", certificate.RevokedBy, certificate.RevokedByMSP)
+		}
+		if certificate.RevokedAt != "" {
+			revokeInfo += fmt.Sprintf(" | Luc: %s", certificate.RevokedAt)
+		}
 		return &VerifyResult{
 			IsValid:     false,
 			Status:      "revoked",
-			Message:     fmt.Sprintf("Văn bằng đã bị thu hồi. Lý do: %s", certificate.RevokeReason),
+			Message:     revokeInfo,
 			Certificate: certificate,
 		}, nil
 	}
@@ -245,35 +246,38 @@ func (c *CertificateContract) VerifyCertificate(
 	return &VerifyResult{
 		IsValid:     true,
 		Status:      "valid",
-		Message:     "Văn bằng hợp lệ. Lưu ý: chưa xác minh file PDF - dùng VerifyWithPdfHash để xác minh đầy đủ.",
+		Message:     "Van bang hop le.",
 		Certificate: certificate,
 	}, nil
 }
 
-// VerifyWithPdfHash - Xác minh ĐẦY ĐỦ: kiểm tra cả trạng thái VÀ tính toàn vẹn file PDF
-// Đây là hàm xác minh CHÍNH XÁC NHẤT - dùng khi người dùng upload file PDF lên
-// pdfHash: SHA-256 của file PDF người dùng nộp lên, tính ở frontend/backend
 func (c *CertificateContract) VerifyWithPdfHash(
 	ctx contractapi.TransactionContextInterface,
 	certID string,
-	pdfHash string, // Hash của file PDF mà người dùng đang cầm
+	pdfHash string,
 ) (*VerifyResult, error) {
 	certificate, err := c.GetCertificate(ctx, certID)
 	if err != nil {
 		return &VerifyResult{
 			IsValid: false,
 			Status:  "not_found",
-			Message: fmt.Sprintf("Không tìm thấy văn bằng với mã: %s", certID),
+			Message: fmt.Sprintf("Khong tim thay van bang voi ma: %s", certID),
 		}, nil
 	}
 
-	// --- Bước 1: Kiểm tra trạng thái thu hồi ---
 	if certificate.Status == "revoked" {
+		revokeInfo := fmt.Sprintf("Van bang da bi thu hoi. Ly do: %s", certificate.RevokeReason)
+		if certificate.RevokedBy != "" {
+			revokeInfo += fmt.Sprintf(" | Nguoi thu hoi: %s (%s)", certificate.RevokedBy, certificate.RevokedByMSP)
+		}
+		if certificate.RevokedAt != "" {
+			revokeInfo += fmt.Sprintf(" | Luc: %s", certificate.RevokedAt)
+		}
 		return &VerifyResult{
 			IsValid:      false,
 			PdfHashMatch: false,
 			Status:       "revoked",
-			Message:      fmt.Sprintf("Văn bằng đã bị thu hồi. Lý do: %s", certificate.RevokeReason),
+			Message:      revokeInfo,
 			Certificate:  certificate,
 		}, nil
 	}
@@ -284,76 +288,69 @@ func (c *CertificateContract) VerifyWithPdfHash(
 			IsValid:      false,
 			PdfHashMatch: false,
 			Status:       "pdf_tampered",
-			Message:      "⚠️ FILE PDF ĐÃ BỊ THAY ĐỔI hoặc không phải file gốc được phát hành. Hash không khớp với blockchain.",
+			Message:      "FILE PDF da bi thay doi hoac khong phai file goc duoc phat hanh. Hash khong khop voi blockchain.",
 			Certificate:  certificate,
 		}, nil
 	}
 
-	// --- Bước 3: Tất cả hợp lệ ---
 	return &VerifyResult{
 		IsValid:      true,
 		PdfHashMatch: true,
 		Status:       "valid",
-		Message:      "✅ Văn bằng hợp lệ. File PDF này chính xác là file gốc được phát hành.",
+		Message:      "Van bang hop le. File PDF nay chinh xac la file goc duoc phat hanh.",
 		Certificate:  certificate,
 	}, nil
 }
 
-// RevokeCertificate - Thu hồi văn bằng kèm lý do
-// Cả Org1MSP (Trường ĐH) và Org2MSP (Bộ GD / Super Admin) đều được phép thu hồi
 func (c *CertificateContract) RevokeCertificate(
 	ctx contractapi.TransactionContextInterface,
 	certID string,
 	reason string,
+	revokerID string,
 ) error {
-	// --- Kiểm tra quyền ---
-	// Org1MSP (Trường ĐH):   University Admin thu hồi bằng trường mình
-	// Org2MSP (Bộ GD):       Super Admin thu hồi bất kỳ bằng nào
 	clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
-		return fmt.Errorf("không thể lấy MSP ID: %v", err)
-	}
-	if clientMSPID != "Org1MSP" && clientMSPID != "Org2MSP" {
-		return fmt.Errorf("không có quyền thu hồi: cần Org1MSP (Khối Trường) hoặc Org2MSP (Bộ GD), bạn là: %s", clientMSPID)
+		return fmt.Errorf("khong the lay MSP ID: %v", err)
 	}
 
-	// --- Lấy văn bằng ---
+	if clientMSPID != "Org1MSP" && clientMSPID != "Org2MSP" {
+		return fmt.Errorf("khong co quyen thu hoi: can Org1MSP hoac Org2MSP, ban la: %s", clientMSPID)
+	}
+
 	certificate, err := c.GetCertificate(ctx, certID)
 	if err != nil {
 		return err
 	}
 
-	// --- Kiểm tra trạng thái ---
-	if certificate.Status == "revoked" {
-		return fmt.Errorf("văn bằng %s đã bị thu hồi trước đó (lý do: %s)", certID, certificate.RevokeReason)
-	}
-
-	// --- Lý do thu hồi bắt buộc ---
-	if strings.TrimSpace(reason) == "" {
-		return fmt.Errorf("phải cung cấp lý do thu hồi")
-	}
-
-	// --- Cập nhật trạng thái ---
 	txTimestamp, err := ctx.GetStub().GetTxTimestamp()
 	if err != nil {
-		return fmt.Errorf("không thể lấy timestamp: %v", err)
+		return fmt.Errorf("khong the lay timestamp: %v", err)
 	}
-	timestamp := time.Unix(txTimestamp.Seconds, 0)
+	ts := time.Unix(txTimestamp.Seconds, int64(txTimestamp.Nanos)).UTC().Format(time.RFC3339)
+
+	if certificate.Status == "revoked" {
+		return fmt.Errorf("van bang %s da bi thu hoi truoc do (ly do: %s)", certID, certificate.RevokeReason)
+	}
+
+	if strings.TrimSpace(reason) == "" {
+		return fmt.Errorf("phai cung cap ly do thu hoi")
+	}
 
 	certificate.Status = "revoked"
 	certificate.RevokeReason = reason
-	certificate.UpdatedAt = timestamp
+	certificate.RevokedBy = revokerID
+	certificate.RevokedByMSP = clientMSPID
+	certificate.RevokedAt = ts
+	certificate.UpdatedAt = ts
 
-	// --- Lưu lại ---
 	certificateJSON, err := json.Marshal(certificate)
 	if err != nil {
-		return fmt.Errorf("không thể serialize dữ liệu: %v", err)
+		return fmt.Errorf("khong the serialize du lieu: %v", err)
 	}
 
 	return ctx.GetStub().PutState(certID, certificateJSON)
 }
 
-// GetCertificateHistory - Lấy toàn bộ lịch sử thay đổi của một văn bằng (audit trail)
 func (c *CertificateContract) GetCertificateHistory(
 	ctx contractapi.TransactionContextInterface,
 	certID string,
@@ -379,9 +376,14 @@ func (c *CertificateContract) GetCertificateHistory(
 			}
 		}
 
+		ts := ""
+		if response.Timestamp != nil {
+			ts = time.Unix(response.Timestamp.Seconds, int64(response.Timestamp.Nanos)).UTC().Format(time.RFC3339)
+		}
+
 		record := HistoryQueryResult{
 			TxID:      response.TxId,
-			Timestamp: time.Unix(response.Timestamp.Seconds, int64(response.Timestamp.Nanos)),
+			Timestamp: ts,
 			IsDelete:  response.IsDelete,
 			Value:     certificate,
 		}
@@ -391,42 +393,130 @@ func (c *CertificateContract) GetCertificateHistory(
 	return records, nil
 }
 
-// ============================================================
-// HÀM HỖ TRỢ CHO UPDATE HISTORY (AUDIT TRAIL)
-// ============================================================
-
-// GetCertificateUpdateHistory - Lấy toàn bộ lịch sử cập nhật PDF hash của một văn bằng
-// Trả về danh sách các lần cập nhật với đầy đủ thông tin: ai, khi nào, hash cũ, hash mới, lý do
 func (c *CertificateContract) GetCertificateUpdateHistory(
 	ctx contractapi.TransactionContextInterface,
 	certID string,
 ) ([]UpdateRecord, error) {
-	// Kiểm tra certificate có tồn tại không
 	exists, err := c.CertificateExists(ctx, certID)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, fmt.Errorf("văn bằng %s không tồn tại", certID)
+		return nil, fmt.Errorf("van bang %s khong ton tai", certID)
 	}
 
 	historyKey := "cert:UPDATES:" + certID
 	historyJSON, err := ctx.GetStub().GetState(historyKey)
 	if err != nil {
-		return nil, fmt.Errorf("không thể đọc lịch sử cập nhật: %v", err)
+		return nil, fmt.Errorf("khong the doc lich su cap nhat: %v", err)
 	}
 	if historyJSON == nil {
-		// Không có lịch sử cập nhật nào
 		return []UpdateRecord{}, nil
 	}
 
 	var records []UpdateRecord
 	err = json.Unmarshal(historyJSON, &records)
 	if err != nil {
-		return nil, fmt.Errorf("không thể deserialize lịch sử cập nhật: %v", err)
+		return nil, fmt.Errorf("khong the deserialize lich su cap nhat: %v", err)
 	}
 
 	return records, nil
+}
+
+// ============================================================
+// QUERY ALL & UPDATE PDF HASH
+// ============================================================
+
+func (c *CertificateContract) QueryAllCertificates(
+	ctx contractapi.TransactionContextInterface,
+) ([]*Certificate, error) {
+	resultsIterator, err := ctx.GetStub().GetStateByRange("", "")
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	var certs []*Certificate
+	for resultsIterator.HasNext() {
+		response, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+		if strings.HasPrefix(response.Key, "cert:") {
+			continue
+		}
+		var cert Certificate
+		if err := json.Unmarshal(response.Value, &cert); err != nil {
+			continue
+		}
+		certs = append(certs, &cert)
+	}
+	return certs, nil
+}
+
+func (c *CertificateContract) UpdatePdfHash(
+	ctx contractapi.TransactionContextInterface,
+	certID string,
+	newPdfHash string,
+	reason string,
+) error {
+	clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
+	if err != nil {
+		return fmt.Errorf("khong the lay MSP ID: %v", err)
+	}
+	if clientMSPID != "Org1MSP" {
+		return fmt.Errorf("chi Org1MSP duoc phep cap nhat PDF hash")
+	}
+
+	certificate, err := c.GetCertificate(ctx, certID)
+	if err != nil {
+		return err
+	}
+	if certificate.Status == "revoked" {
+		return fmt.Errorf("khong the cap nhat van bang da bi thu hoi")
+	}
+	if strings.TrimSpace(reason) == "" {
+		return fmt.Errorf("phai cung cap ly do cap nhat")
+	}
+	if !strings.HasPrefix(newPdfHash, "sha256:") || len(newPdfHash) != 71 {
+		return fmt.Errorf("pdfHash khong dung dinh dang, can 'sha256:<64_hex_chars>', nhan duoc: %s", newPdfHash)
+	}
+
+	updaterID, found, err := ctx.GetClientIdentity().GetAttributeValue("hf.EnrollmentID")
+	if err != nil || !found {
+		updaterID, _ = ctx.GetClientIdentity().GetID()
+	}
+
+	txTimestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return fmt.Errorf("khong the lay timestamp: %v", err)
+	}
+	ts := time.Unix(txTimestamp.Seconds, int64(txTimestamp.Nanos)).UTC().Format(time.RFC3339)
+
+	historyKey := "cert:UPDATES:" + certID
+	var records []UpdateRecord
+	existing, err := ctx.GetStub().GetState(historyKey)
+	if err == nil && existing != nil {
+		json.Unmarshal(existing, &records)
+	}
+	records = append(records, UpdateRecord{
+		TxID:       ctx.GetStub().GetTxID(),
+		Timestamp:  ts,
+		OldPdfHash: certificate.PdfHash,
+		NewPdfHash: newPdfHash,
+		Reason:     reason,
+		UpdatedBy:  updaterID,
+	})
+	historyJSON, _ := json.Marshal(records)
+	ctx.GetStub().PutState(historyKey, historyJSON)
+
+	certificate.PdfHash = newPdfHash
+	certificate.UpdateCount++
+	certificate.LastUpdateReason = reason
+	certificate.UpdatedAt = ts
+
+	certJSON, _ := json.Marshal(certificate)
+	return ctx.GetStub().PutState(certID, certJSON)
 }
 
 // ============================================================
@@ -436,11 +526,11 @@ func (c *CertificateContract) GetCertificateUpdateHistory(
 func main() {
 	chaincode, err := contractapi.NewChaincode(&CertificateContract{})
 	if err != nil {
-		fmt.Printf("Lỗi khởi tạo chaincode: %v\n", err)
+		fmt.Printf("Loi khoi tao chaincode: %v\n", err)
 		return
 	}
 
 	if err := chaincode.Start(); err != nil {
-		fmt.Printf("Lỗi khởi động chaincode: %v\n", err)
+		fmt.Printf("Loi khoi dong chaincode: %v\n", err)
 	}
 }
